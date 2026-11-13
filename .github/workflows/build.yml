@@ -1,4 +1,4 @@
-name: Build APK
+эname: Build APK
 
 on:
   push:
@@ -11,10 +11,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Unpack project
+      - name: Locate project
         run: |
-          unzip -q RENT_VPN_purple_design.zip -d project
-          ls -la project/RentVPN
+          if ls ./*.zip >/dev/null 2>&1; then
+            unzip -q "$(ls ./*.zip | head -n1)" -d project
+            DIR=$(dirname "$(find project -name settings.gradle.kts | head -n1)")
+          else
+            DIR=$(dirname "$(find . -name settings.gradle.kts -not -path './project/*' | head -n1)")
+          fi
+          echo "PROJ=$DIR" >> "$GITHUB_ENV"
+          echo "Project dir: $DIR"
+          ls -la "$DIR"
 
       - uses: actions/setup-java@v4
         with:
@@ -29,7 +36,7 @@ jobs:
           gradle-version: 8.9
 
       - name: Download libv2ray.aar
-        working-directory: project/RentVPN
+        working-directory: ${{ env.PROJ }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -39,10 +46,10 @@ jobs:
           ls -la app/libs
 
       - name: Build debug APK
-        working-directory: project/RentVPN
+        working-directory: ${{ env.PROJ }}
         run: gradle :app:assembleDebug --stacktrace
 
       - uses: actions/upload-artifact@v4
         with:
           name: RENT-VPN-debug-apk
-          path: project/RentVPN/app/build/outputs/apk/debug/*.apk
+          path: ${{ env.PROJ }}/app/build/outputs/apk/debug/*.apk
